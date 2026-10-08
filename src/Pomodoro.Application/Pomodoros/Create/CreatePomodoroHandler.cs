@@ -39,7 +39,7 @@ public sealed class CreatePomodoroHandler
 
         if (request.TaskId.HasValue)
         {
-            await EnsureTaskCanBeLinkedAsync(userId, request.TaskId.Value, type, cancellationToken);
+            await TaskLinkGuard.EnsureCanBeLinkedAsync(_tasks, userId, request.TaskId.Value, type, cancellationToken);
         }
 
         var session = PomodoroSession.Create(
@@ -52,21 +52,5 @@ public sealed class CreatePomodoroHandler
         await _achievementEvaluator.HandleAsync(userId, cancellationToken);
 
         return PomodoroSessionResponse.FromDomain(session);
-    }
-
-    /// <summary>
-    /// US-50: só aceita o vínculo quando a tarefa é do mesmo usuário, a sessão é de foco e a tarefa não está concluída.
-    /// Mensagem genérica em qualquer um desses casos, para não revelar a existência de tarefas de outros usuários (L-11).
-    /// </summary>
-    private async Task EnsureTaskCanBeLinkedAsync(
-        int userId, int taskId, SessionType type, CancellationToken cancellationToken)
-    {
-        const string message = "Tarefa não encontrada ou indisponível para vínculo.";
-
-        var task = await _tasks.GetByIdForUserAsync(taskId, userId, cancellationToken);
-        if (task is null || type != SessionType.Foco || task.Status == TaskItemStatus.Feito)
-        {
-            throw new FieldValidationException("TaskId", message);
-        }
     }
 }

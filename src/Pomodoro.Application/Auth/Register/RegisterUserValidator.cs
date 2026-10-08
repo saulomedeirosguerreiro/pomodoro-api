@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using FluentValidation;
+using Pomodoro.Application.Common;
 
 namespace Pomodoro.Application.Auth.Register;
 
@@ -17,11 +17,6 @@ public sealed class RegisterUserValidator : AbstractValidator<RegisterUserReques
             .NotEmpty().WithMessage("E-mail é obrigatório.")
             .EmailAddress().WithMessage("E-mail em formato inválido.");
 
-        RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Senha é obrigatória.")
-            .MinimumLength(8).WithMessage("Senha deve ter no mínimo 8 caracteres.")
-            .MaximumLength(72).WithMessage("Senha deve ter no máximo 72 caracteres.")
-            .Must(password => Regex.IsMatch(password, "[A-Za-z]") && Regex.IsMatch(password, "[0-9]"))
-            .WithMessage("Senha deve conter pelo menos 1 letra e 1 número.");
+        RuleFor(x => x.Password).MustBeAStrongPassword();
     }
 }

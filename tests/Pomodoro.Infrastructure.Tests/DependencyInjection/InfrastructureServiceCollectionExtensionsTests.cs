@@ -31,6 +31,7 @@ public class InfrastructureServiceCollectionExtensionsTests
         provider.GetRequiredService<PomodoroDbContext>().Should().NotBeNull();
         provider.GetRequiredService<IUserRepository>().Should().NotBeNull();
         provider.GetRequiredService<IPomodoroSessionRepository>().Should().NotBeNull();
+        provider.GetRequiredService<IUnitOfWork>().Should().NotBeNull();
         provider.GetRequiredService<IPasswordHasher>().Should().NotBeNull();
         provider.GetRequiredService<ITokenService>().Should().NotBeNull();
         provider.GetRequiredService<IDateTimeProvider>().Should().NotBeNull();

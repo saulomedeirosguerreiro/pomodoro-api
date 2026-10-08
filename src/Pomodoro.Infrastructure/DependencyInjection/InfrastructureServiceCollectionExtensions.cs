@@ -26,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPomodoroSessionRepository, PomodoroSessionRepository>();
         services.AddScoped<ITaskRepository, TaskRepository>();
         services.AddScoped<IAchievementRepository, AchievementRepository>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();

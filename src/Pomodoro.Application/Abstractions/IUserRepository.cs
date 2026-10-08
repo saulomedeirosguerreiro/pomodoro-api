@@ -11,4 +11,7 @@ public interface IUserRepository
     Task<User?> FindByIdAsync(int id, CancellationToken cancellationToken);
 
     Task AddAsync(User user, CancellationToken cancellationToken);
+
+    /// <summary>Remove o usuário e, por cascata (FK), todas as suas sessões, tarefas e conquistas.</summary>
+    Task DeleteAsync(User user, CancellationToken cancellationToken);
 }

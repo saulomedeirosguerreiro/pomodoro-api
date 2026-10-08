@@ -102,6 +102,7 @@ A API sobe em `http://localhost:5134` (perfil `http` de `launchSettings.json`; a
 POST   /api/auth/register
 POST   /api/auth/login
 GET    /api/users/me                    (autenticado)
+DELETE /api/users/me                    (autenticado; exige a senha atual no corpo — exclusão definitiva, em cascata)
 GET    /api/users/me/progress           (autenticado, ?tz=<IANA>; default America/Sao_Paulo)
 
 POST   /api/pomodoros                   (autenticado; aceita taskId opcional, só para type=foco)
@@ -119,7 +120,7 @@ GET    /api/achievements                (autenticado — catálogo completo + st
 
 ## Como executar os testes
 
-366 testes, 100% de cobertura de linha/branch/método (Domain, Application, Infrastructure, Api). A única
+379 testes, 100% de cobertura de linha/branch/método (Domain, Application, Infrastructure, Api). A única
 exceção documentada são 3 linhas do branch `dotnet run -- seed` em `Program.cs`, que só roda via CLI e não
 faz parte do pipeline HTTP exercitado pelos testes de integração.
 
@@ -143,6 +144,7 @@ cat coverage-report/Summary.txt
 - **XP, Nível, Sementes e Streak** são uma **projeção calculada no servidor** a partir do histórico de `pomodoros` — não existe tabela de saldo. Fórmulas (`Pomodoro.Domain.Services.ProgressRules`): foco concluído = 25 XP, pausa concluída = 5 XP, sessão interrompida = 0 XP; nível sobe a cada `200 × nível atual` XP; sementes = 15 por foco concluído + 10 de bônus por pausa longa concluída (fecha um ciclo). Streak conta dias seguidos com ao menos um foco concluído, terminando hoje ou ontem — só "quebra" quando um dia inteiro passa sem foco.
 - **Tarefas:** entidade de backend (não localStorage), com vínculo opcional `pomodoros.task_id` (`ON DELETE SET NULL` — apagar uma tarefa nunca apaga o histórico de pomodoros). O vínculo só é aceito para `type=foco`, para uma tarefa do mesmo usuário e que ainda não esteja `feito`; qualquer violação devolve a mesma mensagem genérica (não revela a existência de tarefas de outro usuário). No máximo uma tarefa por usuário fica `em_curso` por vez — marcar uma nova tira a anterior do foco automaticamente.
 - **Conquistas:** catálogo fixo no código (`Pomodoro.Domain.Achievements.AchievementCatalog`, 10 itens), avaliado no servidor a cada sessão registrada e a cada tarefa concluída. A avaliação é idempotente (nunca grava a mesma conquista duas vezes) e **retroativa** (quem já tinha histórico recebe as conquistas na primeira consulta a `GET /api/achievements`).
+- **Exclusão de conta (`DELETE /api/users/me`):** exige a senha atual no corpo da requisição (reautenticação, não só o token) antes de apagar — sem isso, retorna `401`. É definitiva: o usuário é removido e, por cascata de FK, todas as suas sessões, tarefas e conquistas vão junto. Não existe lista de revogação de token — um JWT emitido antes da exclusão permanece criptograficamente válido até expirar (24h), mas qualquer chamada que precise ler o usuário no banco passa a responder `404`.
 - **`JWT_SECRET` via env var "solta":** o provider de env vars do ASP.NET Core não mapeia uma chave sem o prefixo `Jwt:` (ex. `JWT_SECRET`) para a seção `Jwt` usada por `JwtOptions`/`JwtTokenService`. `Program.cs` resolve o segredo (`Jwt:Secret` OU `JWT_SECRET`) e faz o replay em `builder.Configuration["Jwt:Secret"]` logo em seguida — sem isso, a Api sobe normalmente mas o login quebra ao assinar o token. Coberto por `JwtSecretFromFlatEnvVarTests`.
 
 ## Projeto irmão

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Pomodoro.Domain.Entities;
+using Pomodoro.Domain.Enums;
 using Pomodoro.Infrastructure.Repositories;
 using Pomodoro.Infrastructure.Tests.Persistence;
 using Xunit;
@@ -116,5 +117,64 @@ public class UserRepositoryTests : IDisposable
         var act = () => new UserRepository(context).AddAsync(duplicate, CancellationToken.None);
 
         await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RemoveOUsuario()
+    {
+        int id;
+        using (var seedContext = _factory.CreateContext())
+        {
+            var user = User.Create("João", "joao@email.com", "hash", UtcNow);
+            await new UserRepository(seedContext).AddAsync(user, CancellationToken.None);
+            id = user.Id;
+        }
+
+        using (var context = _factory.CreateContext())
+        {
+            var repository = new UserRepository(context);
+            var user = await repository.FindByIdAsync(id, CancellationToken.None);
+            await repository.DeleteAsync(user!, CancellationToken.None);
+        }
+
+        using var assertContext = _factory.CreateContext();
+        var found = await new UserRepository(assertContext).FindByIdAsync(id, CancellationToken.None);
+        found.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_RemoveEmCascataSessoesTarefasEConquistas()
+    {
+        int userId;
+        using (var seedContext = _factory.CreateContext())
+        {
+            var user = User.Create("João", "joao@email.com", "hash", UtcNow);
+            await new UserRepository(seedContext).AddAsync(user, CancellationToken.None);
+            userId = user.Id;
+
+            var session = PomodoroSession.Create(
+                userId, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+                UtcNow, UtcNow.AddSeconds(SessionTypeDurations.FocoSeconds), UtcNow);
+            seedContext.PomodoroSessions.Add(session);
+
+            var task = TaskItem.Create(userId, "Tarefa", null, TaskPriority.Media, 1, UtcNow);
+            seedContext.Tasks.Add(task);
+
+            seedContext.UserAchievements.Add(UserAchievement.Create(userId, "primeira_semente", UtcNow));
+
+            await seedContext.SaveChangesAsync(CancellationToken.None);
+        }
+
+        using (var context = _factory.CreateContext())
+        {
+            var repository = new UserRepository(context);
+            var user = await repository.FindByIdAsync(userId, CancellationToken.None);
+            await repository.DeleteAsync(user!, CancellationToken.None);
+        }
+
+        using var assertContext = _factory.CreateContext();
+        (await assertContext.PomodoroSessions.AnyAsync(s => s.UserId == userId)).Should().BeFalse();
+        (await assertContext.Tasks.AnyAsync(t => t.UserId == userId)).Should().BeFalse();
+        (await assertContext.UserAchievements.AnyAsync(a => a.UserId == userId)).Should().BeFalse();
     }
 }

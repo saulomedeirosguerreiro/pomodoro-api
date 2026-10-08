@@ -21,6 +21,7 @@ using Pomodoro.Application.Tasks.Delete;
 using Pomodoro.Application.Tasks.List;
 using Pomodoro.Application.Tasks.SetStatus;
 using Pomodoro.Application.Tasks.Update;
+using Pomodoro.Application.Users.Delete;
 using Pomodoro.Application.Users.GetProfile;
 using Pomodoro.Infrastructure.DependencyInjection;
 
@@ -51,6 +52,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
 builder.Services.AddScoped<RegisterUserHandler>();
 builder.Services.AddScoped<LoginHandler>();
 builder.Services.AddScoped<GetUserProfileHandler>();
+builder.Services.AddScoped<DeleteAccountHandler>();
 builder.Services.AddScoped<CreatePomodoroHandler>();
 builder.Services.AddScoped<ListPomodorosHandler>();
 builder.Services.AddScoped<GetPomodoroByIdHandler>();

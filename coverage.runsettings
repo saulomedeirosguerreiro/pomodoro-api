@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <!--
+            Excluídos do gate de 100% por serem código gerado/composição pura, sem lógica própria
+            para testar (ver "Nota sobre 100% de cobertura" no plano de execução):
+            - Migrations/ModelSnapshot: gerados pelo `dotnet ef migrations add`, nunca escritos à mão.
+            - PomodoroDbContextFactory: usado só em design-time pela CLI do EF Core, nunca em runtime.
+          -->
+          <Exclude>
+            [Pomodoro.Infrastructure]Pomodoro.Infrastructure.Persistence.Migrations.*,
+            [Pomodoro.Infrastructure]Pomodoro.Infrastructure.Persistence.PomodoroDbContextFactory
+          </Exclude>
+          <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

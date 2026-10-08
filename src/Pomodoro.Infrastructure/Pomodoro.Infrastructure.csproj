@@ -21,4 +21,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Permite testar diretamente, sem banco, os helpers `internal` de tradução de exceção do provedor
+         (ex.: GuestImportRepository/AchievementRepository.IsUniqueConstraintViolation). -->
+    <InternalsVisibleTo Include="Pomodoro.Infrastructure.Tests" />
+  </ItemGroup>
+
 </Project>

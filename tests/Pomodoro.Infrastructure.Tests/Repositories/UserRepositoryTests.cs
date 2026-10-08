@@ -143,6 +143,31 @@ public class UserRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveChangesAsync_PersisteSenhaAtualizada()
+    {
+        int id;
+        using (var seedContext = _factory.CreateContext())
+        {
+            var user = User.Create("João", "joao@email.com", "hash-antigo", UtcNow);
+            await new UserRepository(seedContext).AddAsync(user, CancellationToken.None);
+            id = user.Id;
+        }
+
+        using (var context = _factory.CreateContext())
+        {
+            var repository = new UserRepository(context);
+            var tracked = await repository.FindByIdAsync(id, CancellationToken.None);
+            tracked!.UpdatePassword("hash-novo", UtcNow.AddDays(1));
+
+            await repository.SaveChangesAsync(CancellationToken.None);
+        }
+
+        using var assertContext = _factory.CreateContext();
+        var reloaded = await new UserRepository(assertContext).FindByIdAsync(id, CancellationToken.None);
+        reloaded!.PasswordHash.Should().Be("hash-novo");
+    }
+
+    [Fact]
     public async Task DeleteAsync_RemoveEmCascataSessoesTarefasEConquistas()
     {
         int userId;

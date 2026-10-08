@@ -7,30 +7,30 @@ using Pomodoro.Infrastructure.Persistence;
 
 namespace Pomodoro.Infrastructure.Repositories;
 
-public sealed class AchievementRepository : IAchievementRepository
+public sealed class GuestImportRepository : IGuestImportRepository
 {
     // SQLITE_CONSTRAINT_UNIQUE — ver SqliteTransactionConstraintBehaviorTests para a prova empírica de
     // que uma violação assim aborta só esta instrução, não a transação. (Id é PK autoincrement — uma
-    // violação de PRIMARYKEY não é um cenário real aqui, só a UNIQUE de (UserId, Code) importa.)
+    // violação de PRIMARYKEY não é um cenário real aqui, só a UNIQUE de (UserId, GuestId) importa.)
     private const int SqliteConstraintUniqueExtendedCode = 2067;
 
     private readonly PomodoroDbContext _db;
 
-    public AchievementRepository(PomodoroDbContext db)
+    public GuestImportRepository(PomodoroDbContext db)
     {
         _db = db;
     }
 
-    public async Task<IReadOnlyList<UserAchievement>> ListForUserAsync(int userId, CancellationToken cancellationToken) =>
-        await _db.UserAchievements.Where(a => a.UserId == userId).ToListAsync(cancellationToken);
+    public Task<GuestImport?> FindAsync(int userId, string guestId, CancellationToken cancellationToken) =>
+        _db.GuestImports.SingleOrDefaultAsync(g => g.UserId == userId && g.GuestId == guestId, cancellationToken);
 
     /// <summary>
-    /// Traduz a violação do índice único (UserId, Code) para <see cref="DuplicateUserAchievementException"/>,
-    /// mantendo a Application sem depender de EF Core.
+    /// Traduz a violação do índice único (UserId, GuestId) — a corrida documentada em D2/1.7 — para
+    /// <see cref="DuplicateGuestImportException"/>, mantendo a Application sem depender de EF Core.
     /// </summary>
-    public async Task AddAsync(UserAchievement achievement, CancellationToken cancellationToken)
+    public async Task AddAsync(GuestImport import, CancellationToken cancellationToken)
     {
-        _db.UserAchievements.Add(achievement);
+        _db.GuestImports.Add(import);
 
         try
         {
@@ -38,8 +38,8 @@ public sealed class AchievementRepository : IAchievementRepository
         }
         catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
         {
-            throw new DuplicateUserAchievementException(
-                "Esta conquista já foi desbloqueada concorrentemente para este usuário.");
+            throw new DuplicateGuestImportException(
+                "Esta importação já foi processada para este usuário (guestId duplicado).");
         }
     }
 

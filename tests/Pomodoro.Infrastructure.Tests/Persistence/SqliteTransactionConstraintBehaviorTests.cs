@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Pomodoro.Application.Common.Exceptions;
 using Pomodoro.Domain.Entities;
 using Pomodoro.Infrastructure.Persistence;
 using Pomodoro.Infrastructure.Repositories;
@@ -36,7 +37,7 @@ public class SqliteTransactionConstraintBehaviorTests : IDisposable
 
         var duplicate = UserAchievement.Create(1, "primeira_semente", BaseTime);
         var act = async () => await achievements.AddAsync(duplicate, CancellationToken.None);
-        await act.Should().ThrowAsync<DbUpdateException>();
+        await act.Should().ThrowAsync<DuplicateUserAchievementException>();
 
         // O EF mantém a entidade que falhou rastreada como "Added"; sem desanexá-la, o próximo
         // SaveChangesAsync tentaria regravá-la e falharia de novo. Isso é do change tracker do EF,

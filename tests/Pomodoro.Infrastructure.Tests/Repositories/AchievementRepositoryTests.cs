@@ -57,6 +57,27 @@ public class AchievementRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void IsUniqueConstraintViolation_ComInnerExceptionQueNaoEDoSqlite_RetornaFalse()
+    {
+        var exception = new Microsoft.EntityFrameworkCore.DbUpdateException(
+            "falha genérica", new InvalidOperationException("não é do SQLite"));
+
+        AchievementRepository.IsUniqueConstraintViolation(exception).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AddAsync_ComUserIdInexistente_LancaDbUpdateExceptionBruta_NaoTraduzParaDuplicateUserAchievementException()
+    {
+        using var context = _factory.CreateContext();
+        var repository = new AchievementRepository(context);
+        var achievement = UserAchievement.Create(999, "primeira_semente", BaseTime);
+
+        var act = () => repository.AddAsync(achievement, CancellationToken.None);
+
+        await act.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateException>();
+    }
+
+    [Fact]
     public async Task ListForUserAsync_SemConquistas_RetornaListaVazia()
     {
         await SeedUsersAsync(1);

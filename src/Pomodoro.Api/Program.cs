@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Pomodoro.Api.Common;
 using Pomodoro.Api.Endpoints;
@@ -11,7 +13,9 @@ using Pomodoro.Application.Achievements;
 using Pomodoro.Application.Achievements.Evaluate;
 using Pomodoro.Application.Achievements.List;
 using Pomodoro.Application.Auth.Login;
+using Pomodoro.Application.Auth.RecoverPassword;
 using Pomodoro.Application.Auth.Register;
+using Pomodoro.Application.Migration.Import;
 using Pomodoro.Application.Pomodoros.Create;
 using Pomodoro.Application.Pomodoros.GetById;
 using Pomodoro.Application.Pomodoros.List;
@@ -51,6 +55,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
 
 builder.Services.AddScoped<RegisterUserHandler>();
 builder.Services.AddScoped<LoginHandler>();
+builder.Services.AddScoped<RecoverPasswordHandler>();
 builder.Services.AddScoped<GetUserProfileHandler>();
 builder.Services.AddScoped<DeleteAccountHandler>();
 builder.Services.AddScoped<CreatePomodoroHandler>();
@@ -65,6 +70,7 @@ builder.Services.AddScoped<DeleteTaskHandler>();
 builder.Services.AddScoped<AchievementStatsProvider>();
 builder.Services.AddScoped<IAchievementEvaluator, EvaluateAchievementsHandler>();
 builder.Services.AddScoped<ListAchievementsHandler>();
+builder.Services.AddScoped<ImportGuestDataHandler>();
 
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -97,6 +103,31 @@ builder.Services.AddCors(options =>
     });
 });
 
+// D6: mitigação para a recuperação de senha sem e-mail ser mais fraca que verificação por posse de
+// e-mail — 5 tentativas/15 min por IP. Nativo do .NET 8 (Microsoft.AspNetCore.RateLimiting já vem no
+// shared framework), sem pacote novo.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new ErrorResponse(new ErrorBody("rate_limited", "Muitas tentativas. Tente novamente mais tarde.")),
+            cancellationToken);
+    };
+
+    options.AddPolicy(RateLimitPolicies.PasswordRecovery, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: RateLimitPolicies.ResolveClientPartitionKey(httpContext.Connection.RemoteIpAddress),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+            }));
+});
+
 var app = builder.Build();
 
 // `dotnet run -- seed` cria o usuário de teste (US-25) e encerra, sem subir o servidor.
@@ -108,6 +139,7 @@ if (args.Contains("seed"))
 
 app.UseExceptionHandler();
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -117,6 +149,7 @@ app.MapPomodorosEndpoints();
 app.MapProgressEndpoints();
 app.MapTasksEndpoints();
 app.MapAchievementsEndpoints();
+app.MapMigrationEndpoints();
 
 app.Run();
 

@@ -17,6 +17,8 @@ public sealed class PomodoroDbContext : DbContext
 
     public DbSet<UserAchievement> UserAchievements => Set<UserAchievement>();
 
+    public DbSet<GuestImport> GuestImports => Set<GuestImport>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PomodoroDbContext).Assembly);

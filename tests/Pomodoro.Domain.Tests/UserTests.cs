@@ -53,4 +53,29 @@ public class UserTests
 
         act.Should().Throw<DomainException>();
     }
+
+    [Fact]
+    public void UpdatePassword_ComHashValido_AtualizaHashEUpdatedAt()
+    {
+        var user = User.Create("João", "joao@email.com", "hash-antigo", UtcNow);
+        var later = UtcNow.AddDays(1);
+
+        user.UpdatePassword("hash-novo", later);
+
+        user.PasswordHash.Should().Be("hash-novo");
+        user.UpdatedAt.Should().Be(later);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void UpdatePassword_ComHashVazioOuEmBranco_LancaDomainException(string? newPasswordHash)
+    {
+        var user = User.Create("João", "joao@email.com", "hash-antigo", UtcNow);
+
+        var act = () => user.UpdatePassword(newPasswordHash!, UtcNow.AddDays(1));
+
+        act.Should().Throw<DomainException>();
+    }
 }

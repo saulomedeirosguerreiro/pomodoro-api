@@ -41,4 +41,16 @@ public sealed class User
             UpdatedAt = utcNow
         };
     }
+
+    /// <summary>Troca o hash de senha (ex.: recuperação sem e-mail) — mantém o restante dos dados intacto.</summary>
+    public void UpdatePassword(string newPasswordHash, DateTime utcNow)
+    {
+        if (string.IsNullOrWhiteSpace(newPasswordHash))
+        {
+            throw new DomainException("Hash de senha não pode ser vazio.");
+        }
+
+        PasswordHash = newPasswordHash;
+        UpdatedAt = utcNow;
+    }
 }

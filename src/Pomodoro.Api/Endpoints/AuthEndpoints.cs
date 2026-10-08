@@ -1,5 +1,6 @@
 using Pomodoro.Api.Common;
 using Pomodoro.Application.Auth.Login;
+using Pomodoro.Application.Auth.RecoverPassword;
 using Pomodoro.Application.Auth.Register;
 
 namespace Pomodoro.Api.Endpoints;
@@ -25,6 +26,15 @@ public static class AuthEndpoints
                 return Results.Ok(response);
             })
             .AddEndpointFilter<ValidationFilter<LoginRequest>>();
+
+        group.MapPost("/password-recovery", async (
+                RecoverPasswordRequest request, RecoverPasswordHandler handler, CancellationToken cancellationToken) =>
+            {
+                await handler.HandleAsync(request, cancellationToken);
+                return Results.NoContent();
+            })
+            .AddEndpointFilter<ValidationFilter<RecoverPasswordRequest>>()
+            .RequireRateLimiting(RateLimitPolicies.PasswordRecovery);
 
         return group;
     }

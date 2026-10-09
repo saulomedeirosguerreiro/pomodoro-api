@@ -30,7 +30,7 @@ Lidas via ambiente (ou `--Chave:Sub=valor` na linha de comando):
 | Variável | Obrigatória | Exemplo |
 |---|---|---|
 | `JWT_SECRET` (ou `Jwt:Secret`) | **Sim** — a API não sobe sem ela | uma string aleatória com 32+ caracteres |
-| `ConnectionStrings__Default` | Sim (tem default em `appsettings.Development.json`) | `Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro` |
+| `ConnectionStrings__Default` | **Sim** — a API não sobe sem ela, nem em desenvolvimento | `Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=<a senha definida em docker-compose.yml>` |
 | `CORS_ORIGIN` (ou `Cors:AllowedOrigin`) | Recomendada — precisa bater com a origem do frontend | `http://localhost:5173` |
 
 PowerShell:
@@ -43,42 +43,43 @@ Bash:
 export JWT_SECRET="troque-por-uma-string-aleatoria-de-32-caracteres-ou-mais"
 ```
 
-> Em `appsettings.Development.json` já há um `ConnectionStrings:Default`
-> (`Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro`) e
-> `Cors:AllowedOrigin` (`http://localhost:5173`) prontos para rodar local. Só `JWT_SECRET` precisa ser
-> definido manualmente — de propósito (RNF-02): a API deve recusar subir sem um segredo configurado.
+> Por segurança, nenhuma senha de banco fica hardcoded em `appsettings.Development.json` (só
+> `Cors:AllowedOrigin`, que não é segredo, já vem pronto lá). `ConnectionStrings__Default` e
+> `JWT_SECRET` precisam ser definidos manualmente — de propósito (RNF-02): a API deve recusar subir
+> sem esses dois configurados.
 
 ## Como configurar o banco de dados
 
-PostgreSQL via Docker Compose, schema via EF Core Migrations (sem SQL manual):
+PostgreSQL via Docker Compose, schema via EF Core Migrations (sem SQL manual). A senha nunca fica em
+texto puro em nenhum arquivo versionado — `docker-compose.yml` lê `POSTGRES_PASSWORD` de um `.env`
+local (não versionado; o Docker Compose carrega `.env` automaticamente):
 
 ```bash
+cp .env.example .env    # depois edite .env e defina POSTGRES_PASSWORD com uma senha sua, forte
 docker compose up -d postgres
-export ConnectionStrings__Default="Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro"
+export ConnectionStrings__Default="Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=<a mesma senha do .env>"
 dotnet ef database update --project src/Pomodoro.Infrastructure --startup-project src/Pomodoro.Api
 ```
 
 PowerShell:
 ```powershell
+Copy-Item .env.example .env    # depois edite .env e defina POSTGRES_PASSWORD com uma senha sua, forte
 docker compose up -d postgres
-$env:ConnectionStrings__Default = "Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro"
+$env:ConnectionStrings__Default = "Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=<a mesma senha do .env>"
 dotnet ef database update --project src/Pomodoro.Infrastructure --startup-project src/Pomodoro.Api
 ```
+
+Essa mesma variável precisa estar exportada (ou definida via `dotnet run --project src/Pomodoro.Api
+-- --ConnectionStrings:Default="..."`) antes de `dotnet run`/`dotnet run -- seed` — diferente de antes,
+`appsettings.Development.json` não traz mais uma connection string padrão.
 
 > **Porta 5433, não 5432:** o `docker-compose.yml` deste repo publica o Postgres do container na porta
 > 5433 do host porque a máquina de desenvolvimento original já tinha um PostgreSQL nativo ocupando a
 > 5432. Se a sua máquina não tiver esse conflito, troque `"5433:5432"` por `"5432:5432"` no
-> `docker-compose.yml` e ajuste a porta nas connection strings acima e em
-> `appsettings.Development.json`.
+> `docker-compose.yml` e ajuste a porta nas connection strings acima.
 
 Isso cria as tabelas `users`, `pomodoros`, `tasks`, `user_achievements` e `guest_imports` no banco
 `pomodoro` do container.
-
-> **Por que exportar `ConnectionStrings__Default` só para este comando?** `dotnet ef` roda por fora do
-> host da Api e não lê `appsettings.Development.json` — sem a variável, ele usa o fallback de
-> `PomodoroDbContextFactory` (mesmo banco local do Docker Compose, mas só para uso de `dotnet ef` em
-> design-time). `dotnet run` (próximo passo) não precisa dessa variável, pois lê
-> `appsettings.Development.json` normalmente.
 
 ## Usuário de teste
 

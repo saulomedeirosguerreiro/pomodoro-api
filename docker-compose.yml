@@ -4,7 +4,8 @@ services:
     container_name: pomodoro-postgres
     environment:
       POSTGRES_USER: pomodoro
-      POSTGRES_PASSWORD: pomodoro
+      # Lida de backend/.env (não versionado — copie de .env.example e defina a sua senha).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD em backend/.env (ver .env.example)}
       POSTGRES_DB: pomodoro
     ports:
       # 5433 (não a porta padrão 5432) porque esta máquina já tem um PostgreSQL nativo do Windows

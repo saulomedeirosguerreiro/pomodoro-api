@@ -12,7 +12,10 @@ public sealed class PomodoroDbContextFactory : IDesignTimeDbContextFactory<Pomod
     public PomodoroDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-            ?? "Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro";
+            ?? throw new InvalidOperationException(
+                "Variável de ambiente ConnectionStrings__Default não configurada. Exporte-a antes de " +
+                "rodar `dotnet ef` (ver README, seção \"Como configurar o banco de dados\") — por " +
+                "segurança, a connection string de desenvolvimento não fica hardcoded no código.");
 
         var optionsBuilder = new DbContextOptionsBuilder<PomodoroDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

@@ -24,7 +24,8 @@ public sealed class PasswordRecoveryEndpointsTests
         using var factory = new PomodoroApiFactory();
         var client = factory.CreateClient();
         var email = $"recuperar-{Guid.NewGuid():N}@email.com";
-        await client.PostAsJsonAsync("/api/auth/register", new { name = "João", email, password = "Senha123" });
+        await client.PostAsJsonAsync(
+            "/api/auth/register", new { name = "João", email, password = "Senha123", acceptedTerms = true });
 
         var response = await client.PostAsJsonAsync("/api/auth/password-recovery", new
         {
@@ -67,7 +68,7 @@ public sealed class PasswordRecoveryEndpointsTests
         var clientNomeErrado = factoryNomeErrado.CreateClient();
         var email = $"nomeerrado-{Guid.NewGuid():N}@email.com";
         await clientNomeErrado.PostAsJsonAsync(
-            "/api/auth/register", new { name = "João", email, password = "Senha123" });
+            "/api/auth/register", new { name = "João", email, password = "Senha123", acceptedTerms = true });
 
         var responseNomeErrado = await clientNomeErrado.PostAsJsonAsync("/api/auth/password-recovery", new
         {

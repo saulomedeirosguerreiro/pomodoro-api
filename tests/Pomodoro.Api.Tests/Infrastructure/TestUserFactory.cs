@@ -16,7 +16,8 @@ public static class TestUserFactory
         {
             name = "Usuário de Teste",
             email,
-            password
+            password,
+            acceptedTerms = true
         });
         registerResponse.EnsureSuccessStatusCode();
 

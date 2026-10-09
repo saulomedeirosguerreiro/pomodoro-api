@@ -35,7 +35,8 @@ public sealed class JwtSecretFromFlatEnvVarTests : IClassFixture<JwtSecretFromFl
     {
         var client = _factory.CreateClient();
         const string email = "jwtflatenv@email.com";
-        await client.PostAsJsonAsync("/api/auth/register", new { name = "Flat Env", email, password = "Senha123" });
+        await client.PostAsJsonAsync(
+            "/api/auth/register", new { name = "Flat Env", email, password = "Senha123", acceptedTerms = true });
 
         var loginResponse = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Senha123" });
         loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);

@@ -18,5 +18,8 @@ public sealed class RegisterUserValidator : AbstractValidator<RegisterUserReques
             .EmailAddress().WithMessage("E-mail em formato inválido.");
 
         RuleFor(x => x.Password).MustBeAStrongPassword();
+
+        RuleFor(x => x.AcceptedTerms)
+            .Equal(true).WithMessage("É necessário aceitar os Termos de Uso e a Política de Privacidade.");
     }
 }

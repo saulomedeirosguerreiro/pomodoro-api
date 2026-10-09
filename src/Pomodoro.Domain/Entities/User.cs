@@ -11,11 +11,14 @@ public sealed class User
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
+    /// <summary>Data/hora do aceite dos Termos de Uso/Privacidade. Nula para contas criadas antes desse recurso existir.</summary>
+    public DateTime? TermsAcceptedAt { get; private set; }
+
     private User()
     {
     }
 
-    public static User Create(string name, string email, string passwordHash, DateTime utcNow)
+    public static User Create(string name, string email, string passwordHash, DateTime utcNow, DateTime? termsAcceptedAt = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -38,7 +41,8 @@ public sealed class User
             Email = email.Trim(),
             PasswordHash = passwordHash,
             CreatedAt = utcNow,
-            UpdatedAt = utcNow
+            UpdatedAt = utcNow,
+            TermsAcceptedAt = termsAcceptedAt
         };
     }
 

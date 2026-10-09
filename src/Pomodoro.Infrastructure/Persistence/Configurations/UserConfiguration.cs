@@ -26,6 +26,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.CreatedAt).IsRequired();
         builder.Property(u => u.UpdatedAt).IsRequired();
+        builder.Property(u => u.TermsAcceptedAt);
 
         // Unicidade sem diferenciar maiúsculas (RN-02), garantida pelo tipo citext acima.
         builder.HasIndex(u => u.Email).IsUnique();

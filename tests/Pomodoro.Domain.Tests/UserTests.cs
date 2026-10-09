@@ -19,6 +19,15 @@ public class UserTests
         user.PasswordHash.Should().Be("hash123");
         user.CreatedAt.Should().Be(UtcNow);
         user.UpdatedAt.Should().Be(UtcNow);
+        user.TermsAcceptedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_ComTermsAcceptedAtInformado_PreencheOCampo()
+    {
+        var user = User.Create("João", "joao@email.com", "hash123", UtcNow, termsAcceptedAt: UtcNow);
+
+        user.TermsAcceptedAt.Should().Be(UtcNow);
     }
 
     [Theory]

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pomodoro.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Pomodoro.Infrastructure.Persistence;
 namespace Pomodoro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PomodoroDbContext))]
-    partial class PomodoroDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261009171236_AddTermsAcceptedAtToUser")]
+    partial class AddTermsAcceptedAtToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

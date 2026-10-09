@@ -29,11 +29,12 @@ public class RegisterUserHandlerTests
         _hasher.Hash("Senha123").Returns("hash-fake");
 
         var response = await _handler.HandleAsync(
-            new RegisterUserRequest("João", "joao@email.com", "Senha123"), CancellationToken.None);
+            new RegisterUserRequest("João", "joao@email.com", "Senha123", true), CancellationToken.None);
 
         response.Should().BeEquivalentTo(new RegisterUserResponse(Id: 0, Name: "João", Email: "joao@email.com"));
         await _users.Received(1).AddAsync(
-            Arg.Is<User>(u => u.Email == "joao@email.com" && u.PasswordHash == "hash-fake"),
+            Arg.Is<User>(u => u.Email == "joao@email.com" && u.PasswordHash == "hash-fake"
+                && u.TermsAcceptedAt == _clock.UtcNow),
             Arg.Any<CancellationToken>());
     }
 
@@ -43,7 +44,7 @@ public class RegisterUserHandlerTests
         _users.ExistsByEmailAsync("joao@email.com", Arg.Any<CancellationToken>()).Returns(true);
 
         var act = () => _handler.HandleAsync(
-            new RegisterUserRequest("João", "joao@email.com", "Senha123"), CancellationToken.None);
+            new RegisterUserRequest("João", "joao@email.com", "Senha123", true), CancellationToken.None);
 
         await act.Should().ThrowAsync<ConflictException>();
         await _users.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());

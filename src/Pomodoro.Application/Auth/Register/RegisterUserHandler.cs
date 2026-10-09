@@ -26,7 +26,7 @@ public sealed class RegisterUserHandler
         }
 
         var passwordHash = _hasher.Hash(request.Password);
-        var user = User.Create(request.Name, request.Email, passwordHash, _clock.UtcNow);
+        var user = User.Create(request.Name, request.Email, passwordHash, _clock.UtcNow, termsAcceptedAt: _clock.UtcNow);
 
         await _users.AddAsync(user, cancellationToken);
 

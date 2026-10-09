@@ -11,7 +11,7 @@ public class RegisterUserValidatorTests
     [Fact]
     public void Validate_ComDadosValidos_NaoRetornaErros()
     {
-        var result = _validator.Validate(new RegisterUserRequest("João", "joao@email.com", "Senha123"));
+        var result = _validator.Validate(new RegisterUserRequest("João", "joao@email.com", "Senha123", true));
 
         result.IsValid.Should().BeTrue();
     }
@@ -21,7 +21,7 @@ public class RegisterUserValidatorTests
     [InlineData("A")]
     public void Validate_ComNomeInvalido_RetornaErroNoCampoName(string name)
     {
-        var result = _validator.Validate(new RegisterUserRequest(name, "joao@email.com", "Senha123"));
+        var result = _validator.Validate(new RegisterUserRequest(name, "joao@email.com", "Senha123", true));
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Name");
@@ -32,7 +32,7 @@ public class RegisterUserValidatorTests
     [InlineData("nao-e-email")]
     public void Validate_ComEmailInvalido_RetornaErroNoCampoEmail(string email)
     {
-        var result = _validator.Validate(new RegisterUserRequest("João", email, "Senha123"));
+        var result = _validator.Validate(new RegisterUserRequest("João", email, "Senha123", true));
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Email");
@@ -45,7 +45,7 @@ public class RegisterUserValidatorTests
     [InlineData("12345678")]
     public void Validate_ComSenhaForaDaRegra_RetornaErroNoCampoPassword(string password)
     {
-        var result = _validator.Validate(new RegisterUserRequest("João", "joao@email.com", password));
+        var result = _validator.Validate(new RegisterUserRequest("João", "joao@email.com", password, true));
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Password");
@@ -55,9 +55,18 @@ public class RegisterUserValidatorTests
     public void Validate_ComSenhaMaiorQue72Caracteres_RetornaErroNoCampoPassword()
     {
         var longPassword = new string('a', 71) + "1A";
-        var result = _validator.Validate(new RegisterUserRequest("João", "joao@email.com", longPassword));
+        var result = _validator.Validate(new RegisterUserRequest("João", "joao@email.com", longPassword, true));
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Password");
+    }
+
+    [Fact]
+    public void Validate_ComAcceptedTermsFalso_RetornaErroNoCampoAcceptedTerms()
+    {
+        var result = _validator.Validate(new RegisterUserRequest("João", "joao@email.com", "Senha123", false));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "AcceptedTerms");
     }
 }

@@ -24,7 +24,8 @@ public class AuthEndpointsTests : IClassFixture<PomodoroApiFactory>
         {
             name = "João",
             email,
-            password = "Senha123"
+            password = "Senha123",
+            acceptedTerms = true
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -36,13 +37,15 @@ public class AuthEndpointsTests : IClassFixture<PomodoroApiFactory>
     public async Task Register_ComEmailJaCadastrado_Retorna409()
     {
         var email = $"duplicado-{Guid.NewGuid():N}@email.com";
-        await _client.PostAsJsonAsync("/api/auth/register", new { name = "João", email, password = "Senha123" });
+        await _client.PostAsJsonAsync(
+            "/api/auth/register", new { name = "João", email, password = "Senha123", acceptedTerms = true });
 
         var response = await _client.PostAsJsonAsync("/api/auth/register", new
         {
             name = "Outro João",
             email = email.ToUpperInvariant(),
-            password = "Senha123"
+            password = "Senha123",
+            acceptedTerms = true
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -55,7 +58,8 @@ public class AuthEndpointsTests : IClassFixture<PomodoroApiFactory>
         {
             name = "João",
             email = $"fraco-{Guid.NewGuid():N}@email.com",
-            password = "123456"
+            password = "123456",
+            acceptedTerms = true
         });
 
         response.StatusCode.Should().Be((HttpStatusCode)422);
@@ -64,10 +68,27 @@ public class AuthEndpointsTests : IClassFixture<PomodoroApiFactory>
     }
 
     [Fact]
+    public async Task Register_SemAceitarOsTermos_Retorna422ComErroNoCampoAcceptedTerms()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "João",
+            email = $"semtermos-{Guid.NewGuid():N}@email.com",
+            password = "Senha123",
+            acceptedTerms = false
+        });
+
+        response.StatusCode.Should().Be((HttpStatusCode)422);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("AcceptedTerms");
+    }
+
+    [Fact]
     public async Task Login_ComCredenciaisValidas_Retorna200ComToken()
     {
         var email = $"login-ok-{Guid.NewGuid():N}@email.com";
-        await _client.PostAsJsonAsync("/api/auth/register", new { name = "João", email, password = "Senha123" });
+        await _client.PostAsJsonAsync(
+            "/api/auth/register", new { name = "João", email, password = "Senha123", acceptedTerms = true });
 
         var response = await _client.PostAsJsonAsync("/api/auth/login", new { email, password = "Senha123" });
 
@@ -80,7 +101,8 @@ public class AuthEndpointsTests : IClassFixture<PomodoroApiFactory>
     public async Task Login_ComSenhaErrada_Retorna401ComMensagemGenerica()
     {
         var email = $"login-errado-{Guid.NewGuid():N}@email.com";
-        await _client.PostAsJsonAsync("/api/auth/register", new { name = "João", email, password = "Senha123" });
+        await _client.PostAsJsonAsync(
+            "/api/auth/register", new { name = "João", email, password = "Senha123", acceptedTerms = true });
 
         var response = await _client.PostAsJsonAsync("/api/auth/login", new { email, password = "SenhaErrada1" });
 

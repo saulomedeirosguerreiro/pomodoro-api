@@ -12,10 +12,10 @@ public sealed class PomodoroDbContextFactory : IDesignTimeDbContextFactory<Pomod
     public PomodoroDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-            ?? "Data Source=pomodoro.design.db";
+            ?? "Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro";
 
         var optionsBuilder = new DbContextOptionsBuilder<PomodoroDbContext>();
-        optionsBuilder.UseSqlite(connectionString);
+        optionsBuilder.UseNpgsql(connectionString);
 
         return new PomodoroDbContext(optionsBuilder.Options);
     }

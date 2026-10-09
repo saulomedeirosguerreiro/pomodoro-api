@@ -18,7 +18,7 @@ public static class InfrastructureServiceCollectionExtensions
             ?? throw new InvalidOperationException(
                 "Variável de ambiente ConnectionStrings__Default (ou appsettings ConnectionStrings:Default) não configurada.");
 
-        services.AddDbContext<PomodoroDbContext>(options => options.UseSqlite(connectionString));
+        services.AddDbContext<PomodoroDbContext>(options => options.UseNpgsql(connectionString));
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
 

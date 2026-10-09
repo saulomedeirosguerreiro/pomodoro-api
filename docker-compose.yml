@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pomodoro
+      POSTGRES_PASSWORD: pomodoro
+      POSTGRES_DB: pomodoro
+    ports:
+      # 5433 (não a porta padrão 5432) porque esta máquina já tem um PostgreSQL nativo do Windows
+      # ouvindo em 5432 — ajuste para "5432:5432" se a sua máquina não tiver esse conflito.
+      - "5433:5432"
+    volumes:
+      - pomodoro-postgres-data:/var/lib/postgresql/data
+volumes:
+  pomodoro-postgres-data:

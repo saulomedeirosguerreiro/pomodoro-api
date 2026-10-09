@@ -4,10 +4,10 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Pomodoro.Api.Tests.Infrastructure;
 using Pomodoro.Infrastructure.Persistence;
 using Xunit;
 
@@ -52,28 +52,19 @@ public sealed class JwtSecretFromFlatEnvVarTests : IClassFixture<JwtSecretFromFl
 
     public sealed class FlatEnvVarFactory : WebApplicationFactory<Program>
     {
-        private readonly SqliteConnection _connection = new("DataSource=:memory:");
-
-        public FlatEnvVarFactory()
-        {
-            _connection.Open();
-        }
+        private readonly PostgresTestDatabaseFactory _dbFactory = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             // De propósito: só a chave plana "JWT_SECRET", exatamente como `export JWT_SECRET=...` do README
             // produziria via EnvironmentVariablesConfigurationProvider — nunca "Jwt:Secret" diretamente.
             builder.UseSetting("JWT_SECRET", "chave-de-teste-via-env-var-plana-32-caracteres-ok");
-            builder.UseSetting("ConnectionStrings:Default", "DataSource=:memory:");
+            builder.UseSetting("ConnectionStrings:Default", _dbFactory.ConnectionString);
 
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<PomodoroDbContext>>();
-                services.AddDbContext<PomodoroDbContext>(options => options.UseSqlite(_connection));
-
-                using var provider = services.BuildServiceProvider();
-                using var scope = provider.CreateScope();
-                scope.ServiceProvider.GetRequiredService<PomodoroDbContext>().Database.EnsureCreated();
+                services.AddDbContext<PomodoroDbContext>(options => options.UseNpgsql(_dbFactory.ConnectionString));
             });
         }
 
@@ -82,7 +73,7 @@ public sealed class JwtSecretFromFlatEnvVarTests : IClassFixture<JwtSecretFromFl
             base.Dispose(disposing);
             if (disposing)
             {
-                _connection.Dispose();
+                _dbFactory.Dispose();
             }
         }
     }

@@ -8,14 +8,15 @@ irmão: [pomodoro-ui](https://github.com/saulomedeirosguerreiro/pomodoro-ui).
 
 - **.NET 8 / C#**, ASP.NET Core **Minimal API**
 - **Clean Architecture**: `Pomodoro.Domain` → `Pomodoro.Application` → `Pomodoro.Infrastructure` → `Pomodoro.Api`
-- **EF Core + SQLite** (persistência; schema 100% via Migrations, sem SQL manual)
+- **EF Core + PostgreSQL** (persistência; schema 100% via Migrations, sem SQL manual)
 - **JWT** (`Microsoft.AspNetCore.Authentication.JwtBearer`) + **BCrypt.Net-Next** (hash de senha)
 - **FluentValidation** (validação de entrada)
-- **xUnit + FluentAssertions 7.x + NSubstitute + WebApplicationFactory** (testes), **coverlet** (cobertura)
+- **xUnit + FluentAssertions 7.x + NSubstitute + WebApplicationFactory + Testcontainers** (testes), **coverlet** (cobertura)
 
 ## Como instalar as dependências
 
-Pré-requisito: **.NET SDK 8**.
+Pré-requisitos: **.NET SDK 8** e **Docker** (Postgres local via Docker Compose; a suíte de testes também
+sobe containers Postgres via Testcontainers — ver "Como executar os testes").
 
 ```bash
 dotnet tool restore   # instala dotnet-ef e reportgenerator (versões fixas no repo)
@@ -29,7 +30,7 @@ Lidas via ambiente (ou `--Chave:Sub=valor` na linha de comando):
 | Variável | Obrigatória | Exemplo |
 |---|---|---|
 | `JWT_SECRET` (ou `Jwt:Secret`) | **Sim** — a API não sobe sem ela | uma string aleatória com 32+ caracteres |
-| `ConnectionStrings__Default` | Sim (tem default em `appsettings.Development.json`) | `Data Source=pomodoro.db` |
+| `ConnectionStrings__Default` | Sim (tem default em `appsettings.Development.json`) | `Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro` |
 | `CORS_ORIGIN` (ou `Cors:AllowedOrigin`) | Recomendada — precisa bater com a origem do frontend | `http://localhost:5173` |
 
 PowerShell:
@@ -42,34 +43,42 @@ Bash:
 export JWT_SECRET="troque-por-uma-string-aleatoria-de-32-caracteres-ou-mais"
 ```
 
-> Em `appsettings.Development.json` já há um `ConnectionStrings:Default` (`Data Source=pomodoro.db`) e
+> Em `appsettings.Development.json` já há um `ConnectionStrings:Default`
+> (`Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro`) e
 > `Cors:AllowedOrigin` (`http://localhost:5173`) prontos para rodar local. Só `JWT_SECRET` precisa ser
 > definido manualmente — de propósito (RNF-02): a API deve recusar subir sem um segredo configurado.
 
 ## Como configurar o banco de dados
 
-SQLite, schema via EF Core Migrations (sem SQL manual):
+PostgreSQL via Docker Compose, schema via EF Core Migrations (sem SQL manual):
 
 ```bash
-export ConnectionStrings__Default="Data Source=pomodoro.db"   # mesmo valor do appsettings.Development.json
+docker compose up -d postgres
+export ConnectionStrings__Default="Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro"
 dotnet ef database update --project src/Pomodoro.Infrastructure --startup-project src/Pomodoro.Api
 ```
 
 PowerShell:
 ```powershell
-$env:ConnectionStrings__Default = "Data Source=pomodoro.db"
+docker compose up -d postgres
+$env:ConnectionStrings__Default = "Host=localhost;Port=5433;Database=pomodoro;Username=pomodoro;Password=pomodoro"
 dotnet ef database update --project src/Pomodoro.Infrastructure --startup-project src/Pomodoro.Api
 ```
 
-Isso cria `src/Pomodoro.Api/pomodoro.db` (caminhos relativos em `ConnectionStrings:Default` resolvem a
-partir do diretório do projeto de *startup*, `src/Pomodoro.Api`) com as tabelas `users`, `pomodoros`,
-`tasks` e `user_achievements`.
+> **Porta 5433, não 5432:** o `docker-compose.yml` deste repo publica o Postgres do container na porta
+> 5433 do host porque a máquina de desenvolvimento original já tinha um PostgreSQL nativo ocupando a
+> 5432. Se a sua máquina não tiver esse conflito, troque `"5433:5432"` por `"5432:5432"` no
+> `docker-compose.yml` e ajuste a porta nas connection strings acima e em
+> `appsettings.Development.json`.
+
+Isso cria as tabelas `users`, `pomodoros`, `tasks`, `user_achievements` e `guest_imports` no banco
+`pomodoro` do container.
 
 > **Por que exportar `ConnectionStrings__Default` só para este comando?** `dotnet ef` roda por fora do
-> host da Api e não lê `appsettings.Development.json` — sem a variável, ele aplica a migração num arquivo
-> descartável (`pomodoro.design.db`) só usado para gerar novas migrações, e a Api real (que lê
-> `appsettings.Development.json` normalmente) sobe com um banco **sem tabelas**. `dotnet run` (próximo
-> passo) não precisa dessa variável.
+> host da Api e não lê `appsettings.Development.json` — sem a variável, ele usa o fallback de
+> `PomodoroDbContextFactory` (mesmo banco local do Docker Compose, mas só para uso de `dotnet ef` em
+> design-time). `dotnet run` (próximo passo) não precisa dessa variável, pois lê
+> `appsettings.Development.json` normalmente.
 
 ## Usuário de teste
 
@@ -120,9 +129,15 @@ GET    /api/achievements                (autenticado — catálogo completo + st
 
 ## Como executar os testes
 
-379 testes, 100% de cobertura de linha/branch/método (Domain, Application, Infrastructure, Api). A única
+100% de cobertura de linha/branch/método (Domain, Application, Infrastructure, Api). A única
 exceção documentada são 3 linhas do branch `dotnet run -- seed` em `Program.cs`, que só roda via CLI e não
 faz parte do pipeline HTTP exercitado pelos testes de integração.
+
+> **Docker é pré-requisito para `dotnet test`:** os testes de `Pomodoro.Infrastructure.Tests` e
+> `Pomodoro.Api.Tests` sobem um container Postgres via Testcontainers (um por processo de teste,
+> independente do container do `docker-compose.yml` usado para desenvolvimento) para validar o schema
+> real da migration contra um Postgres de verdade. Sem o Docker em execução, esses dois projetos de
+> teste falham ao tentar iniciar o container.
 
 ```bash
 dotnet test Pomodoro.sln

@@ -19,7 +19,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email)
             .IsRequired()
             .HasMaxLength(255)
-            .UseCollation("NOCASE");
+            .HasColumnType("citext");
 
         builder.Property(u => u.PasswordHash)
             .IsRequired();
@@ -27,7 +27,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.CreatedAt).IsRequired();
         builder.Property(u => u.UpdatedAt).IsRequired();
 
-        // Unicidade sem diferenciar maiúsculas (RN-02), garantida pela collation NOCASE acima.
+        // Unicidade sem diferenciar maiúsculas (RN-02), garantida pelo tipo citext acima.
         builder.HasIndex(u => u.Email).IsUnique();
     }
 }

@@ -9,7 +9,7 @@ namespace Pomodoro.Infrastructure.Tests.Repositories;
 
 public class PomodoroSessionRepositoryTests : IDisposable
 {
-    private readonly SqliteInMemoryContextFactory _factory = new();
+    private readonly PostgresTestDatabaseFactory _factory = new();
     private static readonly DateTime BaseTime = new(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
 
     public void Dispose() => _factory.Dispose();

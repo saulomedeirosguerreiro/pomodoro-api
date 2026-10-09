@@ -9,7 +9,7 @@ namespace Pomodoro.Infrastructure.Tests.Repositories;
 
 public class GuestImportRepositoryTests : IDisposable
 {
-    private readonly SqliteInMemoryContextFactory _factory = new();
+    private readonly PostgresTestDatabaseFactory _factory = new();
     private static readonly DateTime BaseTime = new(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
 
     public void Dispose() => _factory.Dispose();
@@ -83,10 +83,10 @@ public class GuestImportRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void IsUniqueConstraintViolation_ComInnerExceptionQueNaoEDoSqlite_RetornaFalse()
+    public void IsUniqueConstraintViolation_ComInnerExceptionQueNaoEDoPostgres_RetornaFalse()
     {
         var exception = new Microsoft.EntityFrameworkCore.DbUpdateException(
-            "falha genérica", new InvalidOperationException("não é do SQLite"));
+            "falha genérica", new InvalidOperationException("não é do Postgres"));
 
         GuestImportRepository.IsUniqueConstraintViolation(exception).Should().BeFalse();
     }

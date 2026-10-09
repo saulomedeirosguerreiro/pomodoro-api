@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Pomodoro.Application.Common.Exceptions;
 using Pomodoro.Domain.Entities;
 using Pomodoro.Infrastructure.Repositories;
 using Pomodoro.Infrastructure.Tests.Persistence;
@@ -8,7 +9,7 @@ namespace Pomodoro.Infrastructure.Tests.Repositories;
 
 public class AchievementRepositoryTests : IDisposable
 {
-    private readonly SqliteInMemoryContextFactory _factory = new();
+    private readonly PostgresTestDatabaseFactory _factory = new();
     private static readonly DateTime BaseTime = new(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
 
     public void Dispose() => _factory.Dispose();
@@ -57,10 +58,10 @@ public class AchievementRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void IsUniqueConstraintViolation_ComInnerExceptionQueNaoEDoSqlite_RetornaFalse()
+    public void IsUniqueConstraintViolation_ComInnerExceptionQueNaoEDoPostgres_RetornaFalse()
     {
         var exception = new Microsoft.EntityFrameworkCore.DbUpdateException(
-            "falha genérica", new InvalidOperationException("não é do SQLite"));
+            "falha genérica", new InvalidOperationException("não é do Postgres"));
 
         AchievementRepository.IsUniqueConstraintViolation(exception).Should().BeFalse();
     }
@@ -75,6 +76,24 @@ public class AchievementRepositoryTests : IDisposable
         var act = () => repository.AddAsync(achievement, CancellationToken.None);
 
         await act.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task Indice_UnicoDeUserIdECodigo_ImpedeDuplicado_LancaDuplicateUserAchievementException()
+    {
+        await SeedUsersAsync(1);
+        using (var seedContext = _factory.CreateContext())
+        {
+            await new AchievementRepository(seedContext).AddAsync(
+                UserAchievement.Create(1, "primeira_semente", BaseTime), CancellationToken.None);
+        }
+
+        using var context = _factory.CreateContext();
+        var duplicate = UserAchievement.Create(1, "primeira_semente", BaseTime);
+
+        var act = () => new AchievementRepository(context).AddAsync(duplicate, CancellationToken.None);
+
+        await act.Should().ThrowAsync<DuplicateUserAchievementException>();
     }
 
     [Fact]

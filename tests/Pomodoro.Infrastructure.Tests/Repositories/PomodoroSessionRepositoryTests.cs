@@ -31,6 +31,35 @@ public class PomodoroSessionRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task AddAsync_ComModeFlexivelEMetadados_PersisteERecarregaOsCamposNovos()
+    {
+        await SeedUsersAsync(1);
+        var startedAt = BaseTime;
+        var completedAt = startedAt.AddMinutes(20);
+        var session = PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, 20 * 60,
+            startedAt, completedAt, completedAt,
+            mode: PomodoroSessionMode.Flexivel, plannedDurationSeconds: 15 * 60, addedSeconds: 5 * 60);
+
+        int id;
+        using (var context = _factory.CreateContext())
+        {
+            var repository = new PomodoroSessionRepository(context);
+            await repository.AddAsync(session, CancellationToken.None);
+            id = session.Id;
+        }
+
+        using var readContext = _factory.CreateContext();
+        var reloaded = await new PomodoroSessionRepository(readContext)
+            .GetByIdForUserAsync(id, 1, CancellationToken.None);
+
+        reloaded.Should().NotBeNull();
+        reloaded!.Mode.Should().Be(PomodoroSessionMode.Flexivel);
+        reloaded.PlannedDurationSeconds.Should().Be(15 * 60);
+        reloaded.AddedSeconds.Should().Be(5 * 60);
+    }
+
+    [Fact]
     public async Task AddAsync_PersisteEAtribuiId()
     {
         await SeedUsersAsync(1);

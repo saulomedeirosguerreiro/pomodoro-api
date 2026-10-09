@@ -17,6 +17,18 @@ public sealed class PomodoroSession
     /// <summary>Tarefa vinculada (opcional, só para foco — US-50). Nula quando a tarefa é excluída.</summary>
     public int? TaskItemId { get; private set; }
 
+    /// <summary>
+    /// Modo de origem da sessão: `null` para o Pomodoro clássico, ou
+    /// <see cref="PomodoroSessionMode.Flexivel"/> para o Time Blocking Flexível.
+    /// </summary>
+    public string? Mode { get; private set; }
+
+    /// <summary>Duração planejada originalmente (antes de qualquer tempo adicionado), em segundos.</summary>
+    public int? PlannedDurationSeconds { get; private set; }
+
+    /// <summary>Tempo extra somado ao bloco (ex.: "+5 min"), em segundos.</summary>
+    public int? AddedSeconds { get; private set; }
+
     private PomodoroSession()
     {
     }
@@ -29,7 +41,10 @@ public sealed class PomodoroSession
         DateTime startedAt,
         DateTime completedAt,
         DateTime utcNow,
-        int? taskItemId = null)
+        int? taskItemId = null,
+        string? mode = null,
+        int? plannedDurationSeconds = null,
+        int? addedSeconds = null)
     {
         if (userId <= 0)
         {
@@ -41,11 +56,12 @@ public sealed class PomodoroSession
             throw new DomainException("Duração da sessão precisa ser maior que zero.");
         }
 
+        var minAllowed = SessionTypeDurations.MinAllowedSecondsFor(type);
         var maxAllowed = SessionTypeDurations.MaxAllowedSecondsFor(type);
-        if (durationSeconds > maxAllowed)
+        if (durationSeconds < minAllowed || durationSeconds > maxAllowed)
         {
             throw new DomainException(
-                $"Duração de {durationSeconds}s excede o máximo permitido de {maxAllowed}s para o tipo {type}.");
+                $"Duração de {durationSeconds}s fora da faixa permitida ({minAllowed}s–{maxAllowed}s) para o tipo {type}.");
         }
 
         if (completedAt < startedAt)
@@ -58,6 +74,21 @@ public sealed class PomodoroSession
             throw new DomainException("Só sessões de foco podem ser vinculadas a uma tarefa.");
         }
 
+        if (mode is not null && mode != PomodoroSessionMode.Flexivel)
+        {
+            throw new DomainException($"Modo de sessão inválido: '{mode}'.");
+        }
+
+        if (plannedDurationSeconds is <= 0)
+        {
+            throw new DomainException("Duração planejada precisa ser maior que zero.");
+        }
+
+        if (addedSeconds is < 0)
+        {
+            throw new DomainException("Tempo adicionado não pode ser negativo.");
+        }
+
         return new PomodoroSession
         {
             UserId = userId,
@@ -68,6 +99,9 @@ public sealed class PomodoroSession
             CompletedAt = completedAt,
             CreatedAt = utcNow,
             TaskItemId = taskItemId,
+            Mode = mode,
+            PlannedDurationSeconds = plannedDurationSeconds,
+            AddedSeconds = addedSeconds,
         };
     }
 }

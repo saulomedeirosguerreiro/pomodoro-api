@@ -49,6 +49,20 @@ public class CreatePomodoroHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ComModeFlexivelEMetadados_RepassaOsCamposParaAResposta()
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, StartedAt, CompletedAt,
+            Mode: PomodoroSessionMode.Flexivel, PlannedDurationSeconds: 20 * 60, AddedSeconds: 5 * 60);
+
+        var response = await _handler.HandleAsync(userId: 7, request, CancellationToken.None);
+
+        response.Mode.Should().Be(PomodoroSessionMode.Flexivel);
+        response.PlannedDurationSeconds.Should().Be(20 * 60);
+        response.AddedSeconds.Should().Be(5 * 60);
+    }
+
+    [Fact]
     public async Task HandleAsync_ComSessaoSobreposta_LancaFieldValidationExceptionENaoPersiste()
     {
         _sessions.ExistsOverlappingAsync(7, StartedAt, CompletedAt, Arg.Any<CancellationToken>()).Returns(true);

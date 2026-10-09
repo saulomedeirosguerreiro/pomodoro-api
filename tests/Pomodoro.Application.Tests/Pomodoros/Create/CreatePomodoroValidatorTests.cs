@@ -79,6 +79,28 @@ public class CreatePomodoroValidatorTests
     }
 
     [Fact]
+    public void Validate_ComDuracaoAbaixoDoMinimoDoTipo_RetornaErroNoCampoDurationSeconds()
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.MinAllowedSecondsFor(SessionType.Foco) - 1, StartedAt, CompletedAt);
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "DurationSeconds");
+    }
+
+    [Fact]
+    public void Validate_ComDuracaoCustomizadaDentroDaFaixaDoTipo_NaoRetornaErro()
+    {
+        var customDuration = 40 * 60;
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", customDuration, StartedAt, StartedAt.AddSeconds(customDuration));
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
     public void Validate_ComCompletedAtAnteriorAoStartedAt_RetornaErroNoCampoCompletedAt()
     {
         var request = new CreatePomodoroRequest(
@@ -119,7 +141,88 @@ public class CreatePomodoroValidatorTests
     public void Validate_ComCompletedAtDentroDaToleranciaDeRelogio_NaoRetornaErro()
     {
         var now = _clock.UtcNow;
-        var request = new CreatePomodoroRequest("foco", "concluido", 60, now.AddSeconds(-60), now.AddSeconds(30));
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, now.AddSeconds(-SessionTypeDurations.FocoSeconds), now.AddSeconds(30));
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_ComModeFlexivel_NaoRetornaErro()
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, StartedAt, CompletedAt,
+            Mode: PomodoroSessionMode.Flexivel);
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_SemMode_NaoRetornaErro()
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, StartedAt, CompletedAt);
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_ComModeInvalido_RetornaErroNoCampoMode()
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, StartedAt, CompletedAt,
+            Mode: "outro");
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Mode");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Validate_ComPlannedDurationSecondsNaoPositivo_RetornaErroNoCampo(int plannedDurationSeconds)
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, StartedAt, CompletedAt,
+            PlannedDurationSeconds: plannedDurationSeconds);
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "PlannedDurationSeconds");
+    }
+
+    [Fact]
+    public void Validate_ComPlannedDurationSecondsValido_NaoRetornaErro()
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, StartedAt, CompletedAt,
+            PlannedDurationSeconds: 20 * 60);
+
+        _validator.Validate(request).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validate_ComAddedSecondsNegativo_RetornaErroNoCampo()
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, StartedAt, CompletedAt,
+            AddedSeconds: -1);
+
+        var result = _validator.Validate(request);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "AddedSeconds");
+    }
+
+    [Fact]
+    public void Validate_ComAddedSecondsZero_NaoRetornaErro()
+    {
+        var request = new CreatePomodoroRequest(
+            "foco", "concluido", SessionTypeDurations.FocoSeconds, StartedAt, CompletedAt,
+            AddedSeconds: 0);
 
         _validator.Validate(request).IsValid.Should().BeTrue();
     }

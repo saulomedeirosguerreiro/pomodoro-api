@@ -10,4 +10,7 @@ public sealed record CreatePomodoroRequest(
     int DurationSeconds,
     DateTime StartedAt,
     DateTime CompletedAt,
-    int? TaskId = null);
+    int? TaskId = null,
+    string? Mode = null,
+    int? PlannedDurationSeconds = null,
+    int? AddedSeconds = null);

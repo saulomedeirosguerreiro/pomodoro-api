@@ -10,7 +10,10 @@ public sealed record PomodoroSessionResponse(
     int DurationSeconds,
     DateTime StartedAt,
     DateTime CompletedAt,
-    DateTime CreatedAt)
+    DateTime CreatedAt,
+    string? Mode = null,
+    int? PlannedDurationSeconds = null,
+    int? AddedSeconds = null)
 {
     public static PomodoroSessionResponse FromDomain(PomodoroSession session) => new(
         session.Id,
@@ -19,5 +22,8 @@ public sealed record PomodoroSessionResponse(
         session.DurationSeconds,
         session.StartedAt,
         session.CompletedAt,
-        session.CreatedAt);
+        session.CreatedAt,
+        session.Mode,
+        session.PlannedDurationSeconds,
+        session.AddedSeconds);
 }

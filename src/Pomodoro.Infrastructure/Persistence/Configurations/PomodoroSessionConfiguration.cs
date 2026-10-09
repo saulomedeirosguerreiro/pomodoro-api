@@ -34,6 +34,10 @@ public sealed class PomodoroSessionConfiguration : IEntityTypeConfiguration<Pomo
 
         builder.Property(s => s.TaskItemId).HasColumnName("task_id");
 
+        builder.Property(s => s.Mode);
+        builder.Property(s => s.PlannedDurationSeconds);
+        builder.Property(s => s.AddedSeconds);
+
         builder.HasOne<TaskItem>()
             .WithMany()
             .HasForeignKey(s => s.TaskItemId)

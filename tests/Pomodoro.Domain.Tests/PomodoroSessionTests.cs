@@ -34,11 +34,10 @@ public class PomodoroSessionTests
     }
 
     [Fact]
-    public void Create_ComDuracaoDentroDaTolerancia_NaoLanca()
+    public void Create_ComDuracaoCustomizadaDentroDaFaixaDoTipo_NaoLanca()
     {
         var act = () => PomodoroSession.Create(
-            1, SessionType.Foco, SessionStatus.Concluido,
-            SessionTypeDurations.FocoSeconds + SessionTypeDurations.ToleranceSeconds,
+            1, SessionType.Foco, SessionStatus.Concluido, 40 * 60,
             StartedAt, CompletedAt, UtcNow);
 
         act.Should().NotThrow();
@@ -60,7 +59,18 @@ public class PomodoroSessionTests
     {
         var act = () => PomodoroSession.Create(
             1, SessionType.Foco, SessionStatus.Concluido,
-            SessionTypeDurations.FocoSeconds + SessionTypeDurations.ToleranceSeconds + 1,
+            SessionTypeDurations.MaxAllowedSecondsFor(SessionType.Foco) + 1,
+            StartedAt, CompletedAt, UtcNow);
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Create_ComDuracaoAbaixoDoMinimoPermitido_LancaDomainException()
+    {
+        var act = () => PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido,
+            SessionTypeDurations.MinAllowedSecondsFor(SessionType.Foco) - 1,
             StartedAt, CompletedAt, UtcNow);
 
         act.Should().Throw<DomainException>();
@@ -81,7 +91,7 @@ public class PomodoroSessionTests
     {
         var act = () => PomodoroSession.Create(
             1, SessionType.Foco, SessionStatus.Interrompido,
-            60, StartedAt, StartedAt.AddSeconds(-1), UtcNow);
+            SessionTypeDurations.FocoSeconds, StartedAt, StartedAt.AddSeconds(-1), UtcNow);
 
         act.Should().Throw<DomainException>();
     }
@@ -116,5 +126,90 @@ public class PomodoroSessionTests
             StartedAt, StartedAt.AddSeconds(SessionTypeDurations.StandardSecondsFor(type)), UtcNow, taskItemId: 1);
 
         act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Create_ComModeFlexivel_PreencheMode()
+    {
+        var session = PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+            StartedAt, CompletedAt, UtcNow, mode: PomodoroSessionMode.Flexivel);
+
+        session.Mode.Should().Be(PomodoroSessionMode.Flexivel);
+    }
+
+    [Fact]
+    public void Create_SemMode_ModeFicaNulo()
+    {
+        var session = PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+            StartedAt, CompletedAt, UtcNow);
+
+        session.Mode.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_ComModeInvalido_LancaDomainException()
+    {
+        var act = () => PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+            StartedAt, CompletedAt, UtcNow, mode: "outro");
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Create_ComPlannedDurationSecondsEAddedSecondsValidos_FicamAcessiveis()
+    {
+        var session = PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+            StartedAt, CompletedAt, UtcNow,
+            mode: PomodoroSessionMode.Flexivel, plannedDurationSeconds: 20 * 60, addedSeconds: 5 * 60);
+
+        session.PlannedDurationSeconds.Should().Be(20 * 60);
+        session.AddedSeconds.Should().Be(5 * 60);
+    }
+
+    [Fact]
+    public void Create_SemPlannedDurationSecondsNemAddedSeconds_FicamNulos()
+    {
+        var session = PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+            StartedAt, CompletedAt, UtcNow);
+
+        session.PlannedDurationSeconds.Should().BeNull();
+        session.AddedSeconds.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Create_ComPlannedDurationSecondsNaoPositivo_LancaDomainException(int plannedDurationSeconds)
+    {
+        var act = () => PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+            StartedAt, CompletedAt, UtcNow, plannedDurationSeconds: plannedDurationSeconds);
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Create_ComAddedSecondsNegativo_LancaDomainException()
+    {
+        var act = () => PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+            StartedAt, CompletedAt, UtcNow, addedSeconds: -1);
+
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void Create_ComAddedSecondsZero_NaoLanca()
+    {
+        var act = () => PomodoroSession.Create(
+            1, SessionType.Foco, SessionStatus.Concluido, SessionTypeDurations.FocoSeconds,
+            StartedAt, CompletedAt, UtcNow, addedSeconds: 0);
+
+        act.Should().NotThrow();
     }
 }

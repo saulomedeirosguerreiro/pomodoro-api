@@ -44,7 +44,7 @@ public sealed class CreatePomodoroHandler
 
         var session = PomodoroSession.Create(
             userId, type, status, request.DurationSeconds, request.StartedAt, request.CompletedAt, _clock.UtcNow,
-            request.TaskId);
+            request.TaskId, request.Mode, request.PlannedDurationSeconds, request.AddedSeconds);
 
         await _sessions.AddAsync(session, cancellationToken);
 

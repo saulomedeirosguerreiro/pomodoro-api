@@ -5,9 +5,10 @@ using Pomodoro.Domain.Enums;
 namespace Pomodoro.Application.Pomodoros.Create;
 
 /// <summary>
-/// Regras L-13 (type/status restritos à lista, duration > 0 e dentro da tolerância, completedAt >= startedAt)
-/// mais o antifraude da US-41: nem início nem fim podem estar no futuro (com 60s de tolerância de relógio).
-/// A checagem de sobreposição com outras sessões do usuário fica no handler (precisa do userId do token).
+/// Regras L-13 (type/status restritos à lista, duration > 0 e dentro da faixa plausível por tipo,
+/// completedAt >= startedAt) mais o antifraude da US-41: nem início nem fim podem estar no futuro
+/// (com 60s de tolerância de relógio). A checagem de sobreposição com outras sessões do usuário
+/// fica no handler (precisa do userId do token).
 /// </summary>
 public sealed class CreatePomodoroValidator : AbstractValidator<CreatePomodoroRequest>
 {
@@ -27,9 +28,9 @@ public sealed class CreatePomodoroValidator : AbstractValidator<CreatePomodoroRe
             .GreaterThan(0).WithMessage("Duração deve ser maior que zero.");
 
         RuleFor(x => x)
-            .Must(HaveDurationWithinTolerance)
+            .Must(HaveDurationWithinAllowedRange)
             .WithName("DurationSeconds")
-            .WithMessage("Duração excede o máximo permitido para o tipo informado.")
+            .WithMessage("Duração fora da faixa permitida para o tipo informado.")
             .When(x => SessionWireFormat.TryParseType(x.Type, out _) && x.DurationSeconds > 0);
 
         RuleFor(x => x.CompletedAt)
@@ -47,11 +48,25 @@ public sealed class CreatePomodoroValidator : AbstractValidator<CreatePomodoroRe
         RuleFor(x => x.TaskId)
             .GreaterThan(0).WithMessage("TaskId inválido.")
             .When(x => x.TaskId.HasValue);
+
+        RuleFor(x => x.Mode)
+            .Must(mode => mode == PomodoroSessionMode.Flexivel)
+            .WithMessage($"Modo de sessão inválido. Use {PomodoroSessionMode.Flexivel} ou não informe.")
+            .When(x => x.Mode is not null);
+
+        RuleFor(x => x.PlannedDurationSeconds)
+            .GreaterThan(0).WithMessage("Duração planejada precisa ser maior que zero.")
+            .When(x => x.PlannedDurationSeconds.HasValue);
+
+        RuleFor(x => x.AddedSeconds)
+            .GreaterThanOrEqualTo(0).WithMessage("Tempo adicionado não pode ser negativo.")
+            .When(x => x.AddedSeconds.HasValue);
     }
 
-    private static bool HaveDurationWithinTolerance(CreatePomodoroRequest request)
+    private static bool HaveDurationWithinAllowedRange(CreatePomodoroRequest request)
     {
         SessionWireFormat.TryParseType(request.Type, out var type);
-        return request.DurationSeconds <= SessionTypeDurations.MaxAllowedSecondsFor(type);
+        return request.DurationSeconds >= SessionTypeDurations.MinAllowedSecondsFor(type)
+            && request.DurationSeconds <= SessionTypeDurations.MaxAllowedSecondsFor(type);
     }
 }

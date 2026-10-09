@@ -47,6 +47,26 @@ public class PomodorosEndpointsTests : IClassFixture<PomodoroApiFactory>
     }
 
     [Fact]
+    public async Task CreatePomodoro_ComDuracaoCustomizadaForaDaToleranciaAntiga_Retorna201()
+    {
+        // Antes da faixa configurável por tipo, 40min de foco (fora de 25min ± 60s) era rejeitado
+        // com 422 — essa é a regressão que a US de durações configuráveis corrige (ver também
+        // CreatePomodoroValidatorTests.Validate_ComDuracaoCustomizadaDentroDaFaixaDoTipo_NaoRetornaErro).
+        var client = await AuthenticatedClientAsync("duracaocustom");
+
+        var response = await client.PostAsJsonAsync("/api/pomodoros", new
+        {
+            type = "foco",
+            status = "concluido",
+            durationSeconds = 40 * 60,
+            startedAt = "2026-01-01T10:00:00Z",
+            completedAt = "2026-01-01T10:40:00Z",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
     public async Task CreatePomodoro_ComTipoInvalido_Retorna422()
     {
         var client = await AuthenticatedClientAsync("invalido");

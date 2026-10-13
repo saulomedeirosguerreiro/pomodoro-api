@@ -17,7 +17,8 @@ public static class AuthEndpoints
                 var response = await handler.HandleAsync(request, cancellationToken);
                 return Results.Created($"/api/users/{response.Id}", response);
             })
-            .AddEndpointFilter<ValidationFilter<RegisterUserRequest>>();
+            .AddEndpointFilter<ValidationFilter<RegisterUserRequest>>()
+            .RequireRateLimiting(RateLimitPolicies.Register);
 
         group.MapPost("/login", async (
                 LoginRequest request, LoginHandler handler, CancellationToken cancellationToken) =>

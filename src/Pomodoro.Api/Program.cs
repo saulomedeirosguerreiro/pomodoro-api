@@ -126,6 +126,18 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(15),
                 QueueLimit = 0,
             }));
+
+    // Mesma mitigação, agora para `/api/auth/register` — ver XML doc de `RateLimitPolicies.Register`
+    // sobre o porquê do orçamento maior (50, não 5).
+    options.AddPolicy(RateLimitPolicies.Register, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: RateLimitPolicies.ResolveClientPartitionKey(httpContext.Connection.RemoteIpAddress),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 50,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+            }));
 });
 
 var app = builder.Build();

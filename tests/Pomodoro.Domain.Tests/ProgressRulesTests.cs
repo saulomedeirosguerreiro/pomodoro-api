@@ -52,7 +52,13 @@ public class ProgressRulesTests
     [InlineData(8, "Mestre da Horta")]
     [InlineData(11, "Mestre da Horta")]
     [InlineData(12, "Guardião do Pomar")]
-    [InlineData(100, "Guardião do Pomar")]
+    [InlineData(15, "Guardião do Pomar")]
+    [InlineData(16, "Guardião da Floresta")]
+    [InlineData(19, "Guardião da Floresta")]
+    [InlineData(20, "Protetor da Natureza")]
+    [InlineData(24, "Protetor da Natureza")]
+    [InlineData(25, "Lenda do Pomar Eterno")]
+    [InlineData(100, "Lenda do Pomar Eterno")]
     public void TitleFor_RetornaTituloDoNivel(int level, string expectedTitle)
     {
         ProgressRules.TitleFor(level).Should().Be(expectedTitle);

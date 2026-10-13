@@ -65,6 +65,9 @@ public static class ProgressRules
 
     public static string TitleFor(int level) => level switch
     {
+        >= 25 => "Lenda do Pomar Eterno",
+        >= 20 => "Protetor da Natureza",
+        >= 16 => "Guardião da Floresta",
         >= 12 => "Guardião do Pomar",
         >= 8 => "Mestre da Horta",
         >= 5 => "Horticultor Focado",

@@ -87,4 +87,29 @@ public class UserTests
 
         act.Should().Throw<DomainException>();
     }
+
+    [Fact]
+    public void Rename_ComNomeValido_AtualizaNomeEUpdatedAt()
+    {
+        var user = User.Create("João", "joao@email.com", "hash", UtcNow);
+        var later = UtcNow.AddDays(1);
+
+        user.Rename("  João Silva  ", later);
+
+        user.Name.Should().Be("João Silva");
+        user.UpdatedAt.Should().Be(later);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Rename_ComNomeVazioOuEmBranco_LancaDomainException(string? newName)
+    {
+        var user = User.Create("João", "joao@email.com", "hash", UtcNow);
+
+        var act = () => user.Rename(newName!, UtcNow.AddDays(1));
+
+        act.Should().Throw<DomainException>();
+    }
 }

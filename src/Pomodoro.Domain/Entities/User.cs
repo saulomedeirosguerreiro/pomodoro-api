@@ -57,4 +57,16 @@ public sealed class User
         PasswordHash = newPasswordHash;
         UpdatedAt = utcNow;
     }
+
+    /// <summary>Troca o nome de exibição (tela de Perfil) — mantém o restante dos dados intacto.</summary>
+    public void Rename(string newName, DateTime utcNow)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            throw new DomainException("Nome não pode ser vazio.");
+        }
+
+        Name = newName.Trim();
+        UpdatedAt = utcNow;
+    }
 }

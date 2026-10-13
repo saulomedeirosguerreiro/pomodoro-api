@@ -25,8 +25,10 @@ using Pomodoro.Application.Tasks.Delete;
 using Pomodoro.Application.Tasks.List;
 using Pomodoro.Application.Tasks.SetStatus;
 using Pomodoro.Application.Tasks.Update;
+using Pomodoro.Application.Users.ChangePassword;
 using Pomodoro.Application.Users.Delete;
 using Pomodoro.Application.Users.GetProfile;
+using Pomodoro.Application.Users.UpdateName;
 using Pomodoro.Infrastructure.DependencyInjection;
 
 // Preserva o nome original das claims ("sub", "email") em vez do mapeamento legado
@@ -58,6 +60,8 @@ builder.Services.AddScoped<LoginHandler>();
 builder.Services.AddScoped<RecoverPasswordHandler>();
 builder.Services.AddScoped<GetUserProfileHandler>();
 builder.Services.AddScoped<DeleteAccountHandler>();
+builder.Services.AddScoped<UpdateNameHandler>();
+builder.Services.AddScoped<ChangePasswordHandler>();
 builder.Services.AddScoped<CreatePomodoroHandler>();
 builder.Services.AddScoped<ListPomodorosHandler>();
 builder.Services.AddScoped<GetPomodoroByIdHandler>();

@@ -151,6 +151,67 @@ dotnet reportgenerator -reports:"coverage-tmp/*/coverage.cobertura.xml" -targetd
 cat coverage-report/Summary.txt
 ```
 
+## Deploy em produção (Render, via Docker)
+
+O Render não roda .NET/C# nativamente — só builda e executa imagens Docker. Por isso este repo traz
+um `Dockerfile` (multi-stage: SDK para publish, `aspnet:8.0` para runtime) na raiz de `backend/`.
+
+No Render, ao criar o **Web Service**:
+- **Root Directory:** `backend`
+- **Runtime:** Docker (detectado automaticamente pelo `Dockerfile` na raiz do diretório acima)
+
+Variáveis de ambiente a configurar no painel do Render (aba *Environment*):
+
+| Variável | Obrigatória | Observação |
+|---|---|---|
+| `JWT_SECRET` | **Sim** | string aleatória com 32+ caracteres — gere uma só para produção, diferente da de dev |
+| `ConnectionStrings__Default` | **Sim** | ver conversão de formato abaixo |
+| `CORS_ORIGIN` | Recomendada | URL pública do frontend em produção (ex.: `https://meu-app.vercel.app`) |
+
+`PORT` **não precisa ser configurada manualmente** — o Render injeta essa variável sozinho em runtime,
+e o `ENTRYPOINT` do `Dockerfile` já monta `ASPNETCORE_URLS` a partir dela automaticamente. `ASPNETCORE_ENVIRONMENT=Production`
+também já vem fixado na imagem.
+
+### Connection string: Postgres gerenciado entrega URI, não `Host=...`
+
+Provedores de Postgres gerenciado (Render Postgres, Supabase, Neon etc.) fornecem a connection string
+no formato URI — `postgres://usuario:senha@host:porta/banco` — mas o Npgsql (usado por este projeto)
+espera o formato chave=valor. Converta manualmente antes de colar em `ConnectionStrings__Default`:
+
+```
+postgres://pomodoro:SENHA@dpg-xxxxx.oregon-postgres.render.com/pomodoro_db
+```
+vira
+```
+Host=dpg-xxxxx.oregon-postgres.render.com;Port=5432;Database=pomodoro_db;Username=pomodoro;Password=SENHA;Ssl Mode=Require;Trust Server Certificate=true
+```
+
+(`Ssl Mode=Require` porque bancos gerenciados exigem TLS; sem isso o Npgsql recusa a conexão.)
+
+### Migrations não rodam dentro do container publicado
+
+A imagem final usa `aspnet:8.0` (runtime), que não inclui o SDK nem a ferramenta `dotnet-ef` — então
+`dotnet ef database update` não funciona de dentro do container em produção. Rode a migration a partir
+da sua máquina (ou de um passo de CI com o SDK instalado), apontando para o banco de produção, **antes**
+de o primeiro deploy receber tráfego:
+
+```bash
+dotnet ef database update --project src/Pomodoro.Infrastructure --startup-project src/Pomodoro.Api \
+  --connection "Host=dpg-xxxxx.oregon-postgres.render.com;Port=5432;Database=pomodoro_db;Username=pomodoro;Password=SENHA;Ssl Mode=Require;Trust Server Certificate=true"
+```
+
+### Testar a imagem localmente antes de subir
+
+```bash
+docker build -t pomodoro-api -f Dockerfile .
+docker run --rm -p 8080:8080 \
+  -e PORT=8080 \
+  -e JWT_SECRET="uma-chave-de-teste-com-32-caracteres-ou-mais" \
+  -e ConnectionStrings__Default="Host=host.docker.internal;Port=5433;Database=pomodoro;Username=pomodoro;Password=<a senha do seu .env local>" \
+  -e CORS_ORIGIN="http://localhost:5173" \
+  pomodoro-api
+```
+
 ## Notas de arquitetura e decisões
 
 - **Isolamento entre usuários:** o `user_id` nunca vem do corpo da requisição — sempre do claim `sub` do token JWT.

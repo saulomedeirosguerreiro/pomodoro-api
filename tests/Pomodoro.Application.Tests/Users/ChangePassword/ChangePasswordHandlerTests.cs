@@ -14,13 +14,14 @@ public class ChangePasswordHandlerTests
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IPasswordHasher _hasher = Substitute.For<IPasswordHasher>();
     private readonly IDateTimeProvider _clock = Substitute.For<IDateTimeProvider>();
+    private readonly IRefreshTokenRepository _refreshTokens = Substitute.For<IRefreshTokenRepository>();
     private readonly ChangePasswordHandler _handler;
     private static readonly DateTime BaseTime = new(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
 
     public ChangePasswordHandlerTests()
     {
         _clock.UtcNow.Returns(BaseTime);
-        _handler = new ChangePasswordHandler(_users, _hasher, _clock);
+        _handler = new ChangePasswordHandler(_users, _hasher, _clock, _refreshTokens);
     }
 
     [Fact]
@@ -36,6 +37,7 @@ public class ChangePasswordHandlerTests
         user.PasswordHash.Should().Be("hash-novo");
         user.UpdatedAt.Should().Be(BaseTime);
         await _users.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _refreshTokens.Received(1).RevokeAllForUserAsync(1, BaseTime, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -50,6 +52,8 @@ public class ChangePasswordHandlerTests
         await act.Should().ThrowAsync<InvalidCredentialsException>();
         user.PasswordHash.Should().Be("hash-antigo");
         await _users.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _refreshTokens.DidNotReceive().RevokeAllForUserAsync(
+            Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

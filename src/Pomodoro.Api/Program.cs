@@ -13,7 +13,9 @@ using Pomodoro.Application.Achievements;
 using Pomodoro.Application.Achievements.Evaluate;
 using Pomodoro.Application.Achievements.List;
 using Pomodoro.Application.Auth.Login;
+using Pomodoro.Application.Auth.Logout;
 using Pomodoro.Application.Auth.RecoverPassword;
+using Pomodoro.Application.Auth.Refresh;
 using Pomodoro.Application.Auth.Register;
 using Pomodoro.Application.Migration.Import;
 using Pomodoro.Application.Pomodoros.Create;
@@ -57,6 +59,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
 
 builder.Services.AddScoped<RegisterUserHandler>();
 builder.Services.AddScoped<LoginHandler>();
+builder.Services.AddScoped<RefreshTokenHandler>();
+builder.Services.AddScoped<LogoutHandler>();
 builder.Services.AddScoped<RecoverPasswordHandler>();
 builder.Services.AddScoped<GetUserProfileHandler>();
 builder.Services.AddScoped<DeleteAccountHandler>();
@@ -102,7 +106,10 @@ builder.Services.AddCors(options =>
     {
         if (!string.IsNullOrWhiteSpace(allowedOrigin))
         {
-            policy.WithOrigins(allowedOrigin).AllowAnyHeader().AllowAnyMethod();
+            // AllowCredentials é obrigatório para o cookie httpOnly do refresh token trafegar
+            // cross-origin (front no Vercel, back no Render) — só funciona com origem explícita,
+            // nunca com AllowAnyOrigin, que já não é o caso aqui.
+            policy.WithOrigins(allowedOrigin).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
         }
     });
 });

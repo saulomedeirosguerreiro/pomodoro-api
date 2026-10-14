@@ -27,6 +27,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITaskRepository, TaskRepository>();
         services.AddScoped<IAchievementRepository, AchievementRepository>();
         services.AddScoped<IGuestImportRepository, GuestImportRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();

@@ -117,6 +117,43 @@ namespace Pomodoro.Infrastructure.Persistence.Migrations
                     b.ToTable("pomodoros", (string)null);
                 });
 
+            modelBuilder.Entity("Pomodoro.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("refresh_tokens", (string)null);
+                });
+
             modelBuilder.Entity("Pomodoro.Domain.Entities.TaskItem", b =>
                 {
                     b.Property<int>("Id")
@@ -243,6 +280,15 @@ namespace Pomodoro.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TaskItemId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Pomodoro.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Pomodoro.Domain.Entities.RefreshToken", b =>
+                {
                     b.HasOne("Pomodoro.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")

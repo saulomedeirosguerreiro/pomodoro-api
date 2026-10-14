@@ -1,7 +1,10 @@
 using Pomodoro.Api.Common;
 using Pomodoro.Application.Auth.Login;
+using Pomodoro.Application.Auth.Logout;
 using Pomodoro.Application.Auth.RecoverPassword;
+using Pomodoro.Application.Auth.Refresh;
 using Pomodoro.Application.Auth.Register;
+using Pomodoro.Application.Common.Exceptions;
 
 namespace Pomodoro.Api.Endpoints;
 
@@ -21,12 +24,33 @@ public static class AuthEndpoints
             .RequireRateLimiting(RateLimitPolicies.Register);
 
         group.MapPost("/login", async (
-                LoginRequest request, LoginHandler handler, CancellationToken cancellationToken) =>
+                LoginRequest request, LoginHandler handler, HttpContext httpContext, CancellationToken cancellationToken) =>
             {
-                var response = await handler.HandleAsync(request, cancellationToken);
-                return Results.Ok(response);
+                var result = await handler.HandleAsync(request, cancellationToken);
+                AuthCookies.SetRefreshToken(httpContext, result.RefreshToken, result.RefreshTokenExpiresAt);
+                return Results.Ok(new LoginResponse(result.AccessToken, result.User));
             })
             .AddEndpointFilter<ValidationFilter<LoginRequest>>();
+
+        group.MapPost("/refresh", async (
+                RefreshTokenHandler handler, HttpContext httpContext, CancellationToken cancellationToken) =>
+            {
+                var rawRefreshToken = AuthCookies.ReadRefreshToken(httpContext)
+                    ?? throw new InvalidCredentialsException("Sessão expirada. Faça login novamente.");
+
+                var result = await handler.HandleAsync(rawRefreshToken, cancellationToken);
+                AuthCookies.SetRefreshToken(httpContext, result.RefreshToken, result.RefreshTokenExpiresAt);
+                return Results.Ok(new RefreshResponse(result.AccessToken));
+            });
+
+        group.MapPost("/logout", async (
+                LogoutHandler handler, HttpContext httpContext, CancellationToken cancellationToken) =>
+            {
+                var rawRefreshToken = AuthCookies.ReadRefreshToken(httpContext);
+                await handler.HandleAsync(rawRefreshToken, cancellationToken);
+                AuthCookies.ClearRefreshToken(httpContext);
+                return Results.NoContent();
+            });
 
         group.MapPost("/password-recovery", async (
                 RecoverPasswordRequest request, RecoverPasswordHandler handler, CancellationToken cancellationToken) =>
@@ -40,3 +64,5 @@ public static class AuthEndpoints
         return group;
     }
 }
+
+public sealed record RefreshResponse(string Token);

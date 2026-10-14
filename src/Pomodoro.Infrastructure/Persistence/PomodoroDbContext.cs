@@ -19,6 +19,8 @@ public sealed class PomodoroDbContext : DbContext
 
     public DbSet<GuestImport> GuestImports => Set<GuestImport>();
 
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("citext"); // necessário p/ UserConfiguration.HasColumnType("citext")

@@ -18,7 +18,13 @@ public static class InfrastructureServiceCollectionExtensions
             ?? throw new InvalidOperationException(
                 "Variável de ambiente ConnectionStrings__Default (ou appsettings ConnectionStrings:Default) não configurada.");
 
-        services.AddDbContext<PomodoroDbContext>(options => options.UseNpgsql(connectionString));
+        // `EnableRetryOnFailure`: sem isso, qualquer falha transitória de rede com o Postgres (blip de
+        // conexão, banco ainda "acordando" num provedor free tier) derruba a requisição na primeira
+        // tentativa em vez de tentar de novo — a causa mais provável de um 500/hang esporádico que não
+        // se repete ao tentar de novo manualmente.
+        services.AddDbContext<PomodoroDbContext>(options =>
+            options.UseNpgsql(connectionString, npgsql =>
+                npgsql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorCodesToAdd: null)));
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
 

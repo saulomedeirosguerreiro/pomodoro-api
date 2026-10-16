@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Pomodoro.Api.Common;
@@ -98,18 +99,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
-// US-21 RN-02: CORS liberado só para a origem configurada do frontend.
-var allowedOrigin = FirstNonBlank(builder.Configuration["Cors:AllowedOrigin"], builder.Configuration["CORS_ORIGIN"]);
+// US-21 RN-02: CORS liberado só pra(s) origem(ns) configurada(s) do frontend. Aceita uma lista
+// separada por vírgula/ponto-e-vírgula (ex.: "https://guardiaopomodoro.com.br,https://www.guardiaopomodoro.com.br")
+// porque a origem precisa bater EXATAMENTE com o que o navegador manda — "com www" e "sem www" são
+// origens diferentes pro CORS, e configurar só uma quebra a outra com "No Access-Control-Allow-Origin".
+// `TrimEnd('/')` evita o erro comum de colar a URL com barra no final (Origin nunca vem com barra).
+var allowedOrigins = (FirstNonBlank(builder.Configuration["Cors:AllowedOrigin"], builder.Configuration["CORS_ORIGIN"]) ?? string.Empty)
+    .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Select(origin => origin.TrimEnd('/'))
+    .ToArray();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        if (!string.IsNullOrWhiteSpace(allowedOrigin))
+        if (allowedOrigins.Length > 0)
         {
             // AllowCredentials é obrigatório para o cookie httpOnly do refresh token trafegar
             // cross-origin (front no Vercel, back no Render) — só funciona com origem explícita,
             // nunca com AllowAnyOrigin, que já não é o caso aqui.
-            policy.WithOrigins(allowedOrigin).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
         }
     });
 });
@@ -151,6 +159,15 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// Sem isso, uma requisição presa num backstop lento (ex.: conexão com o banco que nunca retorna)
+// ficava pendurada indefinidamente do lado do servidor também — espelhando exatamente o problema que
+// o timeout de 20s do `fetch` já corrige do lado do frontend. Passado o prazo, a Api responde 503 em
+// vez de deixar o cliente esperando pra sempre.
+builder.Services.AddRequestTimeouts(options =>
+{
+    options.DefaultPolicy = new RequestTimeoutPolicy { Timeout = TimeSpan.FromSeconds(20) };
+});
+
 var app = builder.Build();
 
 // `dotnet run -- seed` cria o usuário de teste (US-25) e encerra, sem subir o servidor.
@@ -161,10 +178,17 @@ if (args.Contains("seed"))
 }
 
 app.UseExceptionHandler();
+app.UseRequestTimeouts();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Sem autenticação/DB de propósito — é só pra um pinger externo (ex.: UptimeRobot/cron-job.org)
+// bater de tempos em tempos e evitar o "cold start" de um serviço free tier que dorme por inatividade
+// (Render e provedores parecidos). Responder instantaneamente também serve pra diferenciar "o serviço
+// está de pé mas lento" de "o serviço está dormindo/não existe".
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapAuthEndpoints();
 app.MapUsersEndpoints();

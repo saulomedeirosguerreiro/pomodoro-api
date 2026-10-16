@@ -33,6 +33,7 @@ using Pomodoro.Application.Users.Delete;
 using Pomodoro.Application.Users.GetProfile;
 using Pomodoro.Application.Users.UpdateName;
 using Pomodoro.Infrastructure.DependencyInjection;
+using Pomodoro.Infrastructure.Persistence;
 
 // Preserva o nome original das claims ("sub", "email") em vez do mapeamento legado
 // para URNs de ClaimTypes — sem isso, user.FindFirstValue(JwtRegisteredClaimNames.Sub) nunca encontra nada.
@@ -100,7 +101,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // US-21 RN-02: CORS liberado só pra(s) origem(ns) configurada(s) do frontend. Aceita uma lista
-// separada por vírgula/ponto-e-vírgula (ex.: "https://guardiaopomodoro.com.br,https://www.guardiaopomodoro.com.br")
+// separada por vírgula/ponto-e-vírgula (ex.: "https://teste.com.br,https://www.teste.com.br")
 // porque a origem precisa bater EXATAMENTE com o que o navegador manda — "com www" e "sem www" são
 // origens diferentes pro CORS, e configurar só uma quebra a outra com "No Access-Control-Allow-Origin".
 // `TrimEnd('/')` evita o erro comum de colar a URL com barra no final (Origin nunca vem com barra).
@@ -168,6 +169,10 @@ builder.Services.AddRequestTimeouts(options =>
     options.DefaultPolicy = new RequestTimeoutPolicy { Timeout = TimeSpan.FromSeconds(20) };
 });
 
+// Checa a conexão com o Postgres (não só "o processo .NET está de pé") — assim um pinger externo
+// detecta banco fora do ar como 503, e não só como 200 seguido de 500 na primeira requisição real.
+builder.Services.AddHealthChecks().AddDbContextCheck<PomodoroDbContext>();
+
 var app = builder.Build();
 
 // `dotnet run -- seed` cria o usuário de teste (US-25) e encerra, sem subir o servidor.
@@ -184,11 +189,12 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Sem autenticação/DB de propósito — é só pra um pinger externo (ex.: UptimeRobot/cron-job.org)
-// bater de tempos em tempos e evitar o "cold start" de um serviço free tier que dorme por inatividade
-// (Render e provedores parecidos). Responder instantaneamente também serve pra diferenciar "o serviço
-// está de pé mas lento" de "o serviço está dormindo/não existe".
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+// Sem autenticação de propósito — é só pra um pinger externo (ex.: UptimeRobot/cron-job.org) bater de
+// tempos em tempos e evitar o "cold start" de um serviço free tier que dorme por inatividade (Render e
+// provedores parecidos). Agora também checa o Postgres (AddDbContextCheck acima): 200 "Healthy" se o
+// banco responde, 503 "Unhealthy" se não — distingue "API de pé, banco fora" de "serviço dormindo/não
+// existe" (nesse último caso o pinger nem recebe resposta).
+app.MapHealthChecks("/health");
 
 app.MapAuthEndpoints();
 app.MapUsersEndpoints();
